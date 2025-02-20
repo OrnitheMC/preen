@@ -1,0 +1,84 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+}
+
+group 'net.ornithemc'
+version '0.0.0'
+
+def ENV = System.getenv()
+
+repositories {
+    maven {
+        url = 'https://maven.ornithemc.net/releases'
+    }
+    mavenCentral()
+}
+
+sourceCompatibility = '8'
+targetCompatibility = '8'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    implementation 'org.ow2.asm:asm:9.7.1'
+    implementation 'org.ow2.asm:asm-commons:9.7.1'
+    implementation 'org.ow2.asm:asm-tree:9.7.1'
+    implementation 'org.ow2.asm:asm-util:9.7.1'
+}
+
+jar {
+    manifest {
+        attributes(
+            'Main-Class': 'net.ornithemc.spreen.Main'
+        )
+    }
+}
+
+task fatJar(type: Jar) {
+	from sourceSets.main.output
+	from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+
+	duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+	manifest {
+		attributes(
+			'Main-Class': 'net.ornithemc.spreen.Main'
+		)
+	}
+
+	archiveClassifier = 'fat'
+}
+
+build.dependsOn(fatJar)
+
+java {
+    withSourcesJar()
+}
+
+publishing {
+    publications{
+        maven(MavenPublication) {
+            groupId = project.group
+            artifactId = project.archivesBaseName
+            version = project.version
+
+            artifact jar
+			artifact fatJar
+        }
+    }
+    repositories {
+        if (ENV.MAVEN_URL) {
+            maven {
+                url = ENV.MAVEN_URL
+                credentials {
+                    username = ENV.MAVEN_USERNAME
+                    password = ENV.MAVEN_PASSWORD
+                }
+            }
+        }
+    }
+}
